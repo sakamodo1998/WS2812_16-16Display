@@ -1,10 +1,17 @@
+#include <NTPClient.h>
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
 #include <FastLED.h>
 #define LED_PIN     5
 #define NUM_LEDS    256
 #define Bt 16
 CRGB leds[NUM_LEDS];
-
-///-------------------------------------------------------Campus
+//--------------------------------------------------------WiFi setup
+const char *ssid     = "**";
+const char *password = "**";
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "ntp.nict.jp",60*60*9, 30*60*1000);
+//--------------------------------------------------------Campus
 int Campus[3][Bt][Bt]{
 {  
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -61,7 +68,7 @@ int Campus[3][Bt][Bt]{
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 }
 };
-//--------------------------------------------------------Fonts
+//--------------------------------------------------------Picture
 bool HelloWorld[Bt][Bt]={
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
   {1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1},
@@ -98,6 +105,25 @@ bool Fuku[Bt][Bt]={
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
+bool WIFIOK[Bt][Bt]={
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0},
+  {0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0},
+  {0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0},
+  {0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0},
+};
+//--------------------------------------------------------Fonts
 bool abt_one[5][3]={
   {0, 1, 0},
   {1, 1, 0},
@@ -142,7 +168,7 @@ bool abt_six[5][3]={
 };
 bool abt_seven[5][3]={
   {1, 1, 1},
-  {1, 0, 0},
+  {1, 0, 1},
   {0, 0, 1},
   {0, 0, 1},
   {0, 0, 1}
@@ -172,36 +198,34 @@ bool abt_o[5][3]={
 int Cursor[2]={0,0};
 //--------------------------------------------------------SETUP
 void setup() {
+  int hang=3;
+  int lie=2;
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
-  //Serial.begin(9600);  
+  Serial.begin(9600);  
   LEDsetup();
+  cleanAll();
+  WiFi.begin(ssid,password);
+  while ( WiFi.status() != WL_CONNECTED ) {
+  Campus[1][hang][lie]=20;
+  displayShow();
+  if(lie>=14){
+    hang=hang+2;
+    lie=2;
+  }
+  else{
+    lie=lie+2;
+  }
+  delay (250);
+  Serial.print ( "." );
+  }
+  paintBucket(0,0,0);
+  printWiFiOK(2000, 25,16,0);
+  timeClient.begin();
+
 }
 //--------------------------------------------------------LOOP
 void loop() {
-while(1){
-
-paintBucket(128/4,128/4,0);
-Campus[0][0][0]=128;
-displayShow();
-delay(3000);
-cleanAll();
-for(int i=0; i<16;i++){
-  for(int j=0; j<16; j++){
-    Campus[1][i][j]=HelloWorld[i][j]*128/4;
-  }
-}
-displayShow();
-delay(1000*2);
-cleanAll();
-for(int t=0; t<10; t++){
-  SetCursor(3,3);
-  printNum(t,0,128/4,0);
-  displayShow();
-  delay(1000);
-  cleanAll();
-}
-
-}
+PrintClock(10,10,10);
 }
 //----------------------------------------------------------FUNCTIONS--
 void LEDsetup(void){
@@ -231,6 +255,8 @@ void LEDsetup(void){
   }
       FastLED.show();
     delay(delaytime);
+    cleanAll();
+    delay(500);
 }
 
 void displayShow(void){
@@ -266,32 +292,195 @@ void paintBucket(int R,int G,int B){
   for(r=0;r<Bt;r++){
       for(c=0;c<Bt;c++){
         Campus[0][r][c]= R;  
-      }
-  }
-    for(r=0;r<Bt;r++){
-      for(c=0;c<Bt;c++){
         Campus[1][r][c]= G;
-      }
-  }
-    for(r=0;r<Bt;r++){
-      for(c=0;c<Bt;c++){
-        Campus[2][r][c]= B;  
+        Campus[2][r][c]= B; 
       }
   }
 }
 
+void printNum(int Num, int R, int G, int B){
+switch (Num){
+  case 1:
+    for(int c=0; c<5; c++){
+      for(int r=0; r<3; r++){
+        if(abt_one[c][r]==1){
+        Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+        Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+        Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+        }
+      }
+    }
+  break;
+  case 2:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_two[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 3:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_three[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 4:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_four[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 5:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_five[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 6:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_six[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 7:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_seven[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 8:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_eight[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }  
+  break;
+  case 9:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_nine[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+  case 0:
+  for(int c=0; c<5; c++){
+    for(int r=0; r<3; r++){
+      if(abt_o[c][r]==1){
+      Campus[0][c+Cursor[0]][r+Cursor[1]]=R;
+      Campus[1][c+Cursor[0]][r+Cursor[1]]=G;
+      Campus[2][c+Cursor[0]][r+Cursor[1]]=B;
+      }
+    }
+  }
+  break;
+}
 
+Cursor[1]=Cursor[1]+3;
 
-if(Cursor[0]<=12){
-  Cursor[0]++;
+if(Cursor[1]<=12){
+  Cursor[1]++;
 }
 else{
-  Cursor[0]=0;
-  Cursor[1]=Cursor[1]+6;
+  Cursor[1]=0;
+  Cursor[0]=Cursor[0]+6;
 }
+
 }
 
 void SetCursor(int i, int j){
 Cursor[0]=i;
 Cursor[1]=j;
+}
+
+void printZEROtoTwo(int StayTime){
+ cleanAll();
+  SetCursor(1,0);
+  for (int i=0;i<8;i++){
+    printNum(i,0,70,0);
+    displayShow();
+    delay(1000);
+  }
+delay(StayTime);
+}
+
+void printWiFiOK(int stayTime, int R, int G, int B){
+  cleanAll();
+  for(int r=0;r<Bt;r++){
+      for(int c=0;c<Bt;c++){
+        Campus[0][r][c]= WIFIOK[r][c]*R;  
+        Campus[1][r][c]= WIFIOK[r][c]*G;
+        Campus[2][r][c]= WIFIOK[r][c]*B; 
+      }
+  }
+  displayShow();
+  delay(stayTime);
+}
+
+void PrintClock(int R, int G, int B){
+ timeClient.update();
+
+  int hours = timeClient.getHours();
+  int minu =  timeClient.getMinutes();
+  int sece =  timeClient.getSeconds();
+
+  int Hu,Hd,Mu,Md,Su,Sd;
+
+  Serial.printf("hour:%d minu:%d sece:%d\n", hours,minu,sece);
+  paintBucket(0,0,0);
+    Hu=hours/10%10;
+    Hd=hours/1 %10;
+    Mu=minu/10%10;
+    Md=minu/1 %10;
+    Su=sece/10%10;
+    Sd=sece/1 %10;
+
+  SetCursor(1,0);
+  printNum(Hu,0,20,0);
+  printNum(Hd,0,20,0);
+  SetCursor(1,9);
+  printNum(Mu,0,20,0);
+  printNum(Md,0,20,0);
+  SetCursor(8,4);
+  printNum(Su,0,20,0);
+  printNum(Sd,0,20,0);
+  displayShow();
+
+  delay(100);
 }
